@@ -216,6 +216,31 @@
   function parseLocal(ds){ const [y,m,d] = ds.split('-').map(Number); return new Date(y, m-1, d); }
   function escapeHtml(str){ return str.replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
 
+  // ---- local draft backup (survives a closed tab even if the real save to GitHub hasn't landed yet) ----
+  function draftKey(section, date){ return 'diaryDraft:' + section + ':' + date; }
+  function saveDraftLocal(){
+    const cur = s();
+    if (!cur.currentDate) return;
+    try{ localStorage.setItem(draftKey(activeSection, cur.currentDate), JSON.stringify({ content: editor.value, ts: Date.now() })); }catch(e){}
+  }
+  function clearDraftLocal(section, date){ try{ localStorage.removeItem(draftKey(section, date)); }catch(e){} }
+  function loadDraftLocal(section, date){
+    try{ const raw = localStorage.getItem(draftKey(section, date)); return raw ? JSON.parse(raw) : null; }catch(e){ return null; }
+  }
+
+  // Best-effort real save the instant the tab is hidden/closed. sendBeacon fires even as the page
+  // is unloading, when a normal fetch would usually get cancelled.
+  function beaconSave(){
+    const cur = s();
+    if (!cur.dirty || !cur.currentDate) return;
+    try{
+      const blob = new Blob([JSON.stringify({ content: editor.value })], { type: 'application/json' });
+      navigator.sendBeacon('/api/' + activeSection + '/entries/' + cur.currentDate, blob);
+    }catch(e){}
+  }
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') beaconSave(); });
+  window.addEventListener('pagehide', beaconSave);
+
   async function api(path, opts){
     const r = await fetch(path, { headers: { 'Content-Type': 'application/json' }, ...opts });
     if (r.status === 401) { showGateForm(); throw new Error('not authenticated'); }
@@ -352,6 +377,7 @@
     if (cur.dirty && !confirm('Discard unsaved changes to this entry?')) return;
     cur.currentDate = ds;
     setStatus('loading');
+    let restored = false;
     try{
       const data = await api('/api/' + activeSection + '/entries/' + ds);
       cur.hasEntry = data.exists;
@@ -360,10 +386,17 @@
       cur.hasEntry = false;
       editor.value = '';
     }
-    cur.dirty = false;
+    const draft = loadDraftLocal(activeSection, ds);
+    if (draft && draft.content !== editor.value){
+      editor.value = draft.content;
+      restored = true;
+    } else if (draft){
+      clearDraftLocal(activeSection, ds); // draft matches what's already saved, no longer needed
+    }
+    cur.dirty = restored;
     updateHeading();
     updateWordcount();
-    setStatus(cur.hasEntry ? 'saved' : 'new entry');
+    setStatus(restored ? 'restored' : (cur.hasEntry ? 'saved' : 'new entry'));
     deleteBtn.style.display = cur.hasEntry ? 'inline-flex' : 'none';
     const [vy, vm] = ds.split('-').map(Number);
     if (vy !== cur.viewYear || vm-1 !== cur.viewMonth){ cur.viewYear = vy; cur.viewMonth = vm-1; }
@@ -381,11 +414,11 @@
     wordcount.textContent = words + (words === 1 ? ' word' : ' words');
   }
   function setStatus(st){
-    const map = { saved:'saved', unsaved:'unsaved changes', 'new entry':'new entry', deleted:'deleted', loading:'loading…', 'save failed':'save failed', 'delete failed':'delete failed' };
+    const map = { saved:'saved', unsaved:'unsaved changes', 'new entry':'new entry', deleted:'deleted', loading:'loading…', 'save failed':'save failed', 'delete failed':'delete failed', restored:'restored unsaved draft — save to keep it' };
     saveStatus.textContent = map[st] || st;
   }
 
-  editor.addEventListener('input', () => { s().dirty = true; setStatus('unsaved'); updateWordcount(); });
+  editor.addEventListener('input', () => { s().dirty = true; setStatus('unsaved'); updateWordcount(); saveDraftLocal(); });
 
   async function saveEntry(){
     const cur = s();
@@ -394,6 +427,7 @@
       cur.entriesMap[cur.currentDate] = editor.value.trim().split('\n')[0].slice(0, 60);
       cur.hasEntry = true;
       cur.dirty = false;
+      clearDraftLocal(activeSection, cur.currentDate);
       setStatus('saved');
       deleteBtn.style.display = 'inline-flex';
       renderCalendar();
@@ -411,6 +445,7 @@
       editor.value = '';
       cur.hasEntry = false;
       cur.dirty = false;
+      clearDraftLocal(activeSection, cur.currentDate);
       setStatus('deleted');
       deleteBtn.style.display = 'none';
       updateWordcount();

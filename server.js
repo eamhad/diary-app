@@ -168,7 +168,7 @@ app.get('/api/:section/entries/:date', requireAuth, requireSection, async (req, 
   }
 });
 
-app.put('/api/:section/entries/:date', requireAuth, requireSection, async (req, res) => {
+async function saveHandler(req, res) {
   try {
     const { content } = req.body || {};
     const existing = await ghGetFile(req.section, req.params.date);
@@ -177,7 +177,13 @@ app.put('/api/:section/entries/:date', requireAuth, requireSection, async (req, 
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
-});
+}
+
+// PUT is the normal save from the Save button.
+// POST to the same path exists so navigator.sendBeacon (used to save on tab close) can hit it —
+// sendBeacon only ever sends POST requests.
+app.put('/api/:section/entries/:date', requireAuth, requireSection, saveHandler);
+app.post('/api/:section/entries/:date', requireAuth, requireSection, saveHandler);
 
 app.delete('/api/:section/entries/:date', requireAuth, requireSection, async (req, res) => {
   try {
