@@ -8,6 +8,7 @@ const {
   GITHUB_REPO,
   GITHUB_BRANCH = 'main',
   GITHUB_PATH = 'entries',
+  LOML_PATH = 'loml',
   APP_PASSWORD,
   SESSION_SECRET = 'please-set-a-real-session-secret',
   PORT = 3000
@@ -16,6 +17,11 @@ const {
 if (!GITHUB_TOKEN || !GITHUB_OWNER || !GITHUB_REPO) {
   console.error('Missing required env vars: GITHUB_TOKEN, GITHUB_OWNER, GITHUB_REPO. The app will not be able to read or write entries until these are set.');
 }
+
+const SECTIONS = {
+  diary: { folder: GITHUB_PATH, prefix: 'diary' },
+  loml: { folder: LOML_PATH, prefix: 'loml' }
+};
 
 const app = express();
 app.use(express.json());
@@ -42,12 +48,16 @@ function ghHeaders() {
   };
 }
 
-function entryPath(date) {
-  return `${GITHUB_PATH}/diary-${date}.txt`;
+function entryPath(section, date) {
+  return `${section.folder}/${section.prefix}-${date}.txt`;
 }
 
-async function ghGetFile(date) {
-  const url = `${GH_API}/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${entryPath(date)}?ref=${GITHUB_BRANCH}`;
+function fileNamePattern(section) {
+  return new RegExp(`^${section.prefix}-(\\d{4}-\\d{2}-\\d{2})\\.txt$`);
+}
+
+async function ghGetFile(section, date) {
+  const url = `${GH_API}/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${entryPath(section, date)}?ref=${GITHUB_BRANCH}`;
   const r = await fetch(url, { headers: ghHeaders() });
   if (r.status === 404) return null;
   if (!r.ok) throw new Error(`GitHub error ${r.status}: ${await r.text()}`);
@@ -58,19 +68,20 @@ async function ghGetFile(date) {
   };
 }
 
-async function ghListDir() {
-  const url = `${GH_API}/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${GITHUB_PATH}?ref=${GITHUB_BRANCH}`;
+async function ghListDir(section) {
+  const url = `${GH_API}/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${section.folder}?ref=${GITHUB_BRANCH}`;
   const r = await fetch(url, { headers: ghHeaders() });
   if (r.status === 404) return [];
   if (!r.ok) throw new Error(`GitHub error ${r.status}: ${await r.text()}`);
   const data = await r.json();
-  return data.filter(f => f.type === 'file' && /^diary-\d{4}-\d{2}-\d{2}\.txt$/.test(f.name));
+  const pattern = fileNamePattern(section);
+  return data.filter(f => f.type === 'file' && pattern.test(f.name));
 }
 
-async function ghSaveFile(date, content, existingSha) {
-  const url = `${GH_API}/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${entryPath(date)}`;
+async function ghSaveFile(section, date, content, existingSha) {
+  const url = `${GH_API}/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${entryPath(section, date)}`;
   const body = {
-    message: existingSha ? `Update diary entry ${date}` : `Add diary entry ${date}`,
+    message: existingSha ? `Update ${section.prefix} entry ${date}` : `Add ${section.prefix} entry ${date}`,
     content: Buffer.from(content, 'utf-8').toString('base64'),
     branch: GITHUB_BRANCH
   };
@@ -84,9 +95,9 @@ async function ghSaveFile(date, content, existingSha) {
   return r.json();
 }
 
-async function ghDeleteFile(date, sha) {
-  const url = `${GH_API}/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${entryPath(date)}`;
-  const body = { message: `Delete diary entry ${date}`, sha, branch: GITHUB_BRANCH };
+async function ghDeleteFile(section, date, sha) {
+  const url = `${GH_API}/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${entryPath(section, date)}`;
+  const body = { message: `Delete ${section.prefix} entry ${date}`, sha, branch: GITHUB_BRANCH };
   const r = await fetch(url, {
     method: 'DELETE',
     headers: { ...ghHeaders(), 'Content-Type': 'application/json' },
@@ -99,6 +110,13 @@ function requireAuth(req, res, next) {
   if (!APP_PASSWORD) return next();
   if (req.session.authed) return next();
   return res.status(401).json({ error: 'not authenticated' });
+}
+
+function requireSection(req, res, next) {
+  const section = SECTIONS[req.params.section];
+  if (!section) return res.status(404).json({ error: 'unknown section' });
+  req.section = section;
+  next();
 }
 
 app.post('/api/login', (req, res) => {
@@ -121,14 +139,15 @@ app.get('/api/session', (req, res) => {
   });
 });
 
-app.get('/api/entries', requireAuth, async (req, res) => {
+app.get('/api/:section/entries', requireAuth, requireSection, async (req, res) => {
   try {
-    const files = await ghListDir();
+    const files = await ghListDir(req.section);
+    const pattern = fileNamePattern(req.section);
     const results = await Promise.all(files.map(async f => {
-      const date = f.name.match(/^diary-(\d{4}-\d{2}-\d{2})\.txt$/)[1];
+      const date = f.name.match(pattern)[1];
       let snippet = '';
       try {
-        const file = await ghGetFile(date);
+        const file = await ghGetFile(req.section, date);
         snippet = (file.content || '').trim().split('\n')[0].slice(0, 60);
       } catch (e) {}
       return { date, snippet };
@@ -139,9 +158,9 @@ app.get('/api/entries', requireAuth, async (req, res) => {
   }
 });
 
-app.get('/api/entries/:date', requireAuth, async (req, res) => {
+app.get('/api/:section/entries/:date', requireAuth, requireSection, async (req, res) => {
   try {
-    const file = await ghGetFile(req.params.date);
+    const file = await ghGetFile(req.section, req.params.date);
     if (!file) return res.json({ exists: false, content: '' });
     res.json({ exists: true, content: file.content });
   } catch (e) {
@@ -149,22 +168,22 @@ app.get('/api/entries/:date', requireAuth, async (req, res) => {
   }
 });
 
-app.put('/api/entries/:date', requireAuth, async (req, res) => {
+app.put('/api/:section/entries/:date', requireAuth, requireSection, async (req, res) => {
   try {
     const { content } = req.body || {};
-    const existing = await ghGetFile(req.params.date);
-    await ghSaveFile(req.params.date, content || '', existing ? existing.sha : null);
+    const existing = await ghGetFile(req.section, req.params.date);
+    await ghSaveFile(req.section, req.params.date, content || '', existing ? existing.sha : null);
     res.json({ ok: true });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
 });
 
-app.delete('/api/entries/:date', requireAuth, async (req, res) => {
+app.delete('/api/:section/entries/:date', requireAuth, requireSection, async (req, res) => {
   try {
-    const existing = await ghGetFile(req.params.date);
+    const existing = await ghGetFile(req.section, req.params.date);
     if (!existing) return res.json({ ok: true });
-    await ghDeleteFile(req.params.date, existing.sha);
+    await ghDeleteFile(req.section, req.params.date, existing.sha);
     res.json({ ok: true });
   } catch (e) {
     res.status(500).json({ error: e.message });

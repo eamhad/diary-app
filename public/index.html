@@ -19,10 +19,15 @@
     --amber: #e0a458;
     --amber-dim: #8a6a3d;
     --teal: #5c9c8f;
+    --rose: #c97b86;
+    --rose-dim: #8a5058;
+    --accent: var(--amber);
+    --accent-dim: var(--amber-dim);
     --text-lo: #8b8b96;
     --text-hi: #ece9e2;
     --danger: #c9705f;
   }
+  body.section-loml{ --accent: var(--rose); --accent-dim: var(--rose-dim); }
   *{box-sizing:border-box;}
   html,body{height:100%;}
   body{ margin:0; background:var(--shell); color:var(--text-hi); font-family:'Lora', serif; display:flex; overflow:hidden; }
@@ -46,10 +51,10 @@
     font-family:'IBM Plex Mono', monospace; font-size:13px; background:var(--shell-3); color:var(--text-hi);
     border:1px solid var(--line); padding:10px 18px; border-radius:8px; cursor:pointer; transition:border-color .15s, transform .1s;
   }
-  .btn:hover{ border-color:var(--amber-dim); }
+  .btn:hover{ border-color:var(--accent-dim); }
   .btn:active{ transform:scale(0.98); }
-  .btn.primary{ background:var(--amber); color:#2b1f0e; border-color:var(--amber); font-weight:500; }
-  .btn.primary:hover{ background:#eab26a; }
+  .btn.primary{ background:var(--accent); color:#241417; border-color:var(--accent); font-weight:500; }
+  .btn.primary:hover{ filter:brightness(1.08); }
   .btn.danger{ border-color:#5c3a34; color:var(--danger); background:transparent; }
   .btn.danger:hover{ border-color:var(--danger); }
 
@@ -57,40 +62,52 @@
   #app.visible{ display:flex; }
 
   .sidebar{ width:290px; min-width:290px; background:var(--shell-2); border-right:1px solid var(--line); display:flex; flex-direction:column; height:100%; }
-  .brand{ padding:22px 20px 14px; font-family:'Fraunces', serif; font-size:20px; font-weight:500; display:flex; justify-content:space-between; align-items:center; }
+  .brand{ padding:22px 20px 10px; font-family:'Fraunces', serif; font-size:20px; font-weight:500; display:flex; justify-content:space-between; align-items:center; }
   .brand button{ background:none; border:none; color:var(--text-lo); font-family:'IBM Plex Mono', monospace; font-size:10px; cursor:pointer; text-decoration:underline; }
   .brand button:hover{ color:var(--text-hi); }
 
-  .cal{ padding:4px 18px 14px; border-bottom:1px solid var(--line); }
+  .tabs{ display:flex; gap:6px; padding:0 18px 14px; border-bottom:1px solid var(--line); }
+  .tab{
+    flex:1; font-family:'IBM Plex Mono', monospace; font-size:12px; text-align:center; padding:8px 6px;
+    border-radius:7px; cursor:pointer; color:var(--text-lo); border:1px solid transparent;
+  }
+  .tab:hover{ color:var(--text-hi); }
+  .tab.active{ background:var(--shell-3); color:var(--text-hi); border-color:var(--line); }
+  .tab.active#tab-loml{ box-shadow:inset 2px 0 0 var(--rose); }
+  .tab.active#tab-diary{ box-shadow:inset 2px 0 0 var(--amber); }
+
+  .cal{ padding:14px 18px 14px; border-bottom:1px solid var(--line); }
   .cal-head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
   .cal-head b{ font-family:'IBM Plex Mono', monospace; font-size:12px; }
   .cal-nav{ display:flex; gap:4px; }
   .cal-nav button{ width:22px; height:22px; border-radius:5px; border:1px solid var(--line); background:transparent; color:var(--text-lo); cursor:pointer; font-size:12px; }
-  .cal-nav button:hover{ border-color:var(--amber-dim); color:var(--text-hi); }
+  .cal-nav button:hover{ border-color:var(--accent-dim); color:var(--text-hi); }
   .cal-grid{ display:grid; grid-template-columns:repeat(7,1fr); gap:3px; }
   .cal-dow{ font-family:'IBM Plex Mono', monospace; font-size:9px; color:var(--text-lo); text-align:center; padding-bottom:4px; }
   .cal-cell{ aspect-ratio:1; display:flex; align-items:center; justify-content:center; position:relative; font-family:'IBM Plex Mono', monospace; font-size:11px; color:var(--text-lo); border-radius:6px; cursor:pointer; }
   .cal-cell.empty{ cursor:default; }
   .cal-cell:not(.empty):hover{ background:var(--shell-3); color:var(--text-hi); }
-  .cal-cell.today{ color:var(--amber); font-weight:500; }
-  .cal-cell.selected{ background:var(--amber); color:#2b1f0e; font-weight:500; }
+  .cal-cell.today{ color:var(--accent); font-weight:500; }
+  .cal-cell.selected{ background:var(--accent); color:#241417; font-weight:500; }
   .cal-cell.has-entry:not(.selected)::after{ content:''; position:absolute; bottom:3px; width:3px; height:3px; border-radius:50%; background:var(--teal); }
   .cal-today-link{ font-family:'IBM Plex Mono', monospace; font-size:10px; color:var(--text-lo); background:none; border:none; cursor:pointer; text-decoration:underline; padding:8px 0 0; }
-  .cal-today-link:hover{ color:var(--amber); }
+  .cal-today-link:hover{ color:var(--accent); }
 
   .entries{ flex:1; overflow-y:auto; padding:12px 10px; }
   .entries-label{ font-family:'IBM Plex Mono', monospace; font-size:10px; color:var(--text-lo); text-transform:uppercase; letter-spacing:0.08em; padding:6px 10px 8px; }
   .entry-item{ padding:9px 10px; border-radius:8px; cursor:pointer; margin-bottom:2px; display:flex; flex-direction:column; gap:2px; }
   .entry-item:hover{ background:var(--shell-3); }
-  .entry-item.active{ background:var(--shell-3); box-shadow:inset 2px 0 0 var(--amber); }
-  .entry-date{ font-family:'IBM Plex Mono', monospace; font-size:11px; color:var(--amber); }
+  .entry-item.active{ background:var(--shell-3); box-shadow:inset 2px 0 0 var(--accent); }
+  .entry-date{ font-family:'IBM Plex Mono', monospace; font-size:11px; color:var(--accent); }
   .entry-snip{ font-size:12px; color:var(--text-lo); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .entries-empty{ color:var(--text-lo); font-size:12px; padding:10px; font-family:'IBM Plex Mono', monospace; }
 
   .editor-wrap{ flex:1; display:flex; align-items:flex-start; justify-content:center; padding:44px 40px; overflow-y:auto; background:radial-gradient(ellipse 700px 300px at 50% 0%, rgba(224,164,88,0.06), transparent 60%); }
+  body.section-loml .editor-wrap{ background:radial-gradient(ellipse 700px 300px at 50% 0%, rgba(201,123,134,0.08), transparent 60%); }
   .paper{ width:100%; max-width:680px; background:var(--paper); color:var(--ink); border-radius:4px 14px 14px 4px; padding:40px 46px 30px 54px; position:relative; min-height:600px; display:flex; flex-direction:column; box-shadow:0 20px 50px rgba(0,0,0,0.35); }
   .paper::before{ content:''; position:absolute; left:20px; top:0; bottom:0; width:0; border-left:2px dashed rgba(43,38,32,0.18); }
-  .paper::after{ content:''; position:absolute; left:0; top:0; bottom:0; width:6px; background:linear-gradient(180deg, var(--amber-dim), var(--teal)); border-radius:4px 0 0 4px; opacity:0.85; }
+  .paper::after{ content:''; position:absolute; left:0; top:0; bottom:0; width:6px; background:linear-gradient(180deg, var(--accent-dim), var(--teal)); border-radius:4px 0 0 4px; opacity:0.85; }
+  .section-label{ font-family:'IBM Plex Mono', monospace; font-size:10px; text-transform:uppercase; letter-spacing:0.1em; color:var(--accent-dim); margin-bottom:4px; }
   .day-nav{ display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; }
   .day-nav .arrows{ display:flex; gap:6px; }
   .day-nav button{ background:none; border:1px solid rgba(43,38,32,0.18); color:var(--ink-soft); font-family:'IBM Plex Mono', monospace; font-size:11px; padding:5px 10px; border-radius:6px; cursor:pointer; }
@@ -126,6 +143,11 @@
   <aside class="sidebar">
     <div class="brand"><span>diary</span><button id="logout-btn" style="display:none;">Log out</button></div>
 
+    <div class="tabs">
+      <div class="tab active" id="tab-diary" data-section="diary">Diary</div>
+      <div class="tab" id="tab-loml" data-section="loml">LOML</div>
+    </div>
+
     <div class="cal">
       <div class="cal-head">
         <div class="cal-nav"><button id="cal-prev">&#8249;</button><button id="cal-next">&#8250;</button></div>
@@ -138,13 +160,14 @@
     </div>
 
     <div class="entries">
-      <div class="entries-label">All entries</div>
+      <div class="entries-label" id="entries-label">All entries</div>
       <div id="entries-list"></div>
     </div>
   </aside>
 
   <main class="editor-wrap">
     <div class="paper">
+      <div class="section-label" id="section-label">Diary</div>
       <div class="day-nav">
         <div class="arrows">
           <button id="prev-day">&#8249; prev day</button>
@@ -167,22 +190,31 @@
 
 <script>
 (function(){
-  let entriesMap = {};
-  let currentDate = null;
-  let hasEntry = false;
-  let dirty = false;
-  let viewYear, viewMonth;
+  const PLACEHOLDERS = {
+    diary: 'Write about your day...',
+    loml: 'Write about them...'
+  };
+  const LABELS = { diary: 'Diary', loml: 'LOML' };
+
+  // Per-section state, kept independently so switching tabs doesn't lose your place.
+  const sections = {
+    diary: { entriesMap: {}, currentDate: null, hasEntry: false, dirty: false, viewYear: null, viewMonth: null, loaded: false },
+    loml:  { entriesMap: {}, currentDate: null, hasEntry: false, dirty: false, viewYear: null, viewMonth: null, loaded: false }
+  };
+  let activeSection = 'diary';
 
   const el = id => document.getElementById(id);
   const gate = el('gate'), app = el('app');
   const editor = el('editor'), heading = el('date-heading'), saveStatus = el('save-status');
   const deleteBtn = el('delete-btn'), saveBtn = el('save-btn'), wordcount = el('wordcount');
   const calGrid = el('cal-grid'), calDow = el('cal-dow'), calTitle = el('cal-title');
-  const entriesList = el('entries-list');
+  const entriesList = el('entries-list'), entriesLabel = el('entries-label'), sectionLabel = el('section-label');
+
+  function s(){ return sections[activeSection]; }
 
   function fmt(d){ return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); }
   function parseLocal(ds){ const [y,m,d] = ds.split('-').map(Number); return new Date(y, m-1, d); }
-  function escapeHtml(s){ return s.replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
+  function escapeHtml(str){ return str.replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
 
   async function api(path, opts){
     const r = await fetch(path, { headers: { 'Content-Type': 'application/json' }, ...opts });
@@ -199,12 +231,9 @@
 
   async function checkSession(){
     try{
-      const s = await fetch('/api/session').then(r => r.json());
-      if (s.authed){
-        await startApp();
-      } else {
-        showGateForm();
-      }
+      const sess = await fetch('/api/session').then(r => r.json());
+      if (sess.authed) await startApp();
+      else showGateForm();
     }catch(e){
       el('gate-copy').textContent = 'Could not reach the server.';
     }
@@ -225,29 +254,55 @@
     app.classList.add('visible');
     el('logout-btn').style.display = 'inline';
     const today = new Date();
-    viewYear = today.getFullYear(); viewMonth = today.getMonth();
+    sections.diary.viewYear = sections.loml.viewYear = today.getFullYear();
+    sections.diary.viewMonth = sections.loml.viewMonth = today.getMonth();
     await scanEntries();
     await openDate(fmt(today));
   }
 
   el('logout-btn').onclick = async () => {
-    if (dirty && !confirm('You have unsaved changes. Discard them?')) return;
+    if (s().dirty && !confirm('You have unsaved changes. Discard them?')) return;
     await fetch('/api/logout', { method:'POST' });
     location.reload();
   };
 
+  document.querySelectorAll('.tab').forEach(tab => {
+    tab.addEventListener('click', () => switchSection(tab.dataset.section));
+  });
+
+  async function switchSection(name){
+    if (name === activeSection) return;
+    if (s().dirty && !confirm('Discard unsaved changes to this entry?')) return;
+    activeSection = name;
+    document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.section === name));
+    document.body.classList.toggle('section-loml', name === 'loml');
+    editor.placeholder = PLACEHOLDERS[name];
+    sectionLabel.textContent = LABELS[name];
+    entriesLabel.textContent = 'All entries';
+    if (!s().loaded) await scanEntries();
+    else { renderCalendar(); renderEntriesList(); }
+    if (s().currentDate){
+      await openDate(s().currentDate);
+    } else {
+      await openDate(fmt(new Date()));
+    }
+  }
+
   async function scanEntries(){
     try{
-      const list = await api('/api/entries');
-      entriesMap = {};
-      for (const item of list) entriesMap[item.date] = item.snippet;
+      const list = await api('/api/' + activeSection + '/entries');
+      const cur = s();
+      cur.entriesMap = {};
+      for (const item of list) cur.entriesMap[item.date] = item.snippet;
+      cur.loaded = true;
       renderCalendar();
       renderEntriesList();
     }catch(e){}
   }
 
   function renderEntriesList(){
-    const dates = Object.keys(entriesMap).sort().reverse();
+    const cur = s();
+    const dates = Object.keys(cur.entriesMap).sort().reverse();
     entriesList.innerHTML = '';
     if (dates.length === 0){
       entriesList.innerHTML = '<div class="entries-empty">No entries yet — write your first one.</div>';
@@ -255,9 +310,9 @@
     }
     for (const ds of dates){
       const item = document.createElement('div');
-      item.className = 'entry-item' + (ds === currentDate ? ' active' : '');
+      item.className = 'entry-item' + (ds === cur.currentDate ? ' active' : '');
       const label = parseLocal(ds).toLocaleDateString(undefined, { weekday:'short', month:'short', day:'numeric', year:'numeric' });
-      item.innerHTML = '<span class="entry-date">' + label + '</span><span class="entry-snip">' + (entriesMap[ds] ? escapeHtml(entriesMap[ds]) : '(empty)') + '</span>';
+      item.innerHTML = '<span class="entry-date">' + label + '</span><span class="entry-snip">' + (cur.entriesMap[ds] ? escapeHtml(cur.entriesMap[ds]) : '(empty)') + '</span>';
       item.onclick = () => openDate(ds);
       entriesList.appendChild(item);
     }
@@ -267,75 +322,78 @@
   calDow.innerHTML = DOW.map(d => '<div class="cal-dow">' + d + '</div>').join('');
 
   function renderCalendar(){
-    calTitle.textContent = new Date(viewYear, viewMonth, 1).toLocaleString(undefined, { month:'long', year:'numeric' });
+    const cur = s();
+    calTitle.textContent = new Date(cur.viewYear, cur.viewMonth, 1).toLocaleString(undefined, { month:'long', year:'numeric' });
     calGrid.innerHTML = '';
-    const first = new Date(viewYear, viewMonth, 1);
+    const first = new Date(cur.viewYear, cur.viewMonth, 1);
     const startDow = first.getDay();
-    const daysInMonth = new Date(viewYear, viewMonth+1, 0).getDate();
+    const daysInMonth = new Date(cur.viewYear, cur.viewMonth+1, 0).getDate();
     const todayStr = fmt(new Date());
     for (let i=0;i<startDow;i++){ const c = document.createElement('div'); c.className = 'cal-cell empty'; calGrid.appendChild(c); }
     for (let d=1; d<=daysInMonth; d++){
-      const dateObj = new Date(viewYear, viewMonth, d);
+      const dateObj = new Date(cur.viewYear, cur.viewMonth, d);
       const ds = fmt(dateObj);
       const cell = document.createElement('div');
       cell.className = 'cal-cell';
       cell.textContent = d;
       if (ds === todayStr) cell.classList.add('today');
-      if (ds === currentDate) cell.classList.add('selected');
-      if (entriesMap.hasOwnProperty(ds)) cell.classList.add('has-entry');
+      if (ds === cur.currentDate) cell.classList.add('selected');
+      if (cur.entriesMap.hasOwnProperty(ds)) cell.classList.add('has-entry');
       cell.onclick = () => openDate(ds);
       calGrid.appendChild(cell);
     }
   }
-  el('cal-prev').onclick = () => { viewMonth--; if (viewMonth<0){viewMonth=11; viewYear--;} renderCalendar(); };
-  el('cal-next').onclick = () => { viewMonth++; if (viewMonth>11){viewMonth=0; viewYear++;} renderCalendar(); };
-  el('today-link').onclick = () => { const t = new Date(); viewYear = t.getFullYear(); viewMonth = t.getMonth(); openDate(fmt(t)); };
+  el('cal-prev').onclick = () => { const cur = s(); cur.viewMonth--; if (cur.viewMonth<0){cur.viewMonth=11; cur.viewYear--;} renderCalendar(); };
+  el('cal-next').onclick = () => { const cur = s(); cur.viewMonth++; if (cur.viewMonth>11){cur.viewMonth=0; cur.viewYear++;} renderCalendar(); };
+  el('today-link').onclick = () => { const t = new Date(); const cur = s(); cur.viewYear = t.getFullYear(); cur.viewMonth = t.getMonth(); openDate(fmt(t)); };
 
   async function openDate(ds){
-    if (dirty && !confirm('Discard unsaved changes to this entry?')) return;
-    currentDate = ds;
+    const cur = s();
+    if (cur.dirty && !confirm('Discard unsaved changes to this entry?')) return;
+    cur.currentDate = ds;
     setStatus('loading');
     try{
-      const data = await api('/api/entries/' + ds);
-      hasEntry = data.exists;
+      const data = await api('/api/' + activeSection + '/entries/' + ds);
+      cur.hasEntry = data.exists;
       editor.value = data.content || '';
     }catch(e){
-      hasEntry = false;
+      cur.hasEntry = false;
       editor.value = '';
     }
-    dirty = false;
+    cur.dirty = false;
     updateHeading();
     updateWordcount();
-    setStatus(hasEntry ? 'saved' : 'new entry');
-    deleteBtn.style.display = hasEntry ? 'inline-flex' : 'none';
+    setStatus(cur.hasEntry ? 'saved' : 'new entry');
+    deleteBtn.style.display = cur.hasEntry ? 'inline-flex' : 'none';
     const [vy, vm] = ds.split('-').map(Number);
-    if (vy !== viewYear || vm-1 !== viewMonth){ viewYear = vy; viewMonth = vm-1; }
+    if (vy !== cur.viewYear || vm-1 !== cur.viewMonth){ cur.viewYear = vy; cur.viewMonth = vm-1; }
     renderCalendar();
     renderEntriesList();
     editor.focus();
   }
 
   function updateHeading(){
-    const d = parseLocal(currentDate);
+    const d = parseLocal(s().currentDate);
     heading.textContent = d.toLocaleDateString(undefined, { weekday:'long', year:'numeric', month:'long', day:'numeric' });
   }
   function updateWordcount(){
     const words = editor.value.trim().length ? editor.value.trim().split(/\s+/).length : 0;
     wordcount.textContent = words + (words === 1 ? ' word' : ' words');
   }
-  function setStatus(s){
-    const map = { saved:'saved', unsaved:'unsaved changes', 'new entry':'new entry', deleted:'deleted', loading:'loading…', 'save failed':'save failed' };
-    saveStatus.textContent = map[s] || s;
+  function setStatus(st){
+    const map = { saved:'saved', unsaved:'unsaved changes', 'new entry':'new entry', deleted:'deleted', loading:'loading…', 'save failed':'save failed', 'delete failed':'delete failed' };
+    saveStatus.textContent = map[st] || st;
   }
 
-  editor.addEventListener('input', () => { dirty = true; setStatus('unsaved'); updateWordcount(); });
+  editor.addEventListener('input', () => { s().dirty = true; setStatus('unsaved'); updateWordcount(); });
 
   async function saveEntry(){
+    const cur = s();
     try{
-      await api('/api/entries/' + currentDate, { method:'PUT', body: JSON.stringify({ content: editor.value }) });
-      entriesMap[currentDate] = editor.value.trim().split('\n')[0].slice(0, 60);
-      hasEntry = true;
-      dirty = false;
+      await api('/api/' + activeSection + '/entries/' + cur.currentDate, { method:'PUT', body: JSON.stringify({ content: editor.value }) });
+      cur.entriesMap[cur.currentDate] = editor.value.trim().split('\n')[0].slice(0, 60);
+      cur.hasEntry = true;
+      cur.dirty = false;
       setStatus('saved');
       deleteBtn.style.display = 'inline-flex';
       renderCalendar();
@@ -344,14 +402,15 @@
   }
 
   async function deleteEntry(){
-    if (!hasEntry) return;
+    const cur = s();
+    if (!cur.hasEntry) return;
     if (!confirm('Delete this entry? This cannot be undone.')) return;
     try{
-      await api('/api/entries/' + currentDate, { method:'DELETE' });
-      delete entriesMap[currentDate];
+      await api('/api/' + activeSection + '/entries/' + cur.currentDate, { method:'DELETE' });
+      delete cur.entriesMap[cur.currentDate];
       editor.value = '';
-      hasEntry = false;
-      dirty = false;
+      cur.hasEntry = false;
+      cur.dirty = false;
       setStatus('deleted');
       deleteBtn.style.display = 'none';
       updateWordcount();
@@ -362,11 +421,11 @@
 
   saveBtn.onclick = saveEntry;
   deleteBtn.onclick = deleteEntry;
-  el('prev-day').onclick = () => { const d = parseLocal(currentDate); d.setDate(d.getDate()-1); openDate(fmt(d)); };
-  el('next-day').onclick = () => { const d = parseLocal(currentDate); d.setDate(d.getDate()+1); openDate(fmt(d)); };
+  el('prev-day').onclick = () => { const d = parseLocal(s().currentDate); d.setDate(d.getDate()-1); openDate(fmt(d)); };
+  el('next-day').onclick = () => { const d = parseLocal(s().currentDate); d.setDate(d.getDate()+1); openDate(fmt(d)); };
 
   document.addEventListener('keydown', (e) => { if ((e.ctrlKey || e.metaKey) && e.key === 's'){ e.preventDefault(); saveEntry(); } });
-  window.addEventListener('beforeunload', (e) => { if (dirty){ e.preventDefault(); e.returnValue = ''; } });
+  window.addEventListener('beforeunload', (e) => { if (s().dirty){ e.preventDefault(); e.returnValue = ''; } });
 
   checkSession();
 })();
