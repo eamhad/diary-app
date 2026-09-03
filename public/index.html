@@ -124,6 +124,22 @@
   ::-webkit-scrollbar{ width:9px; }
   ::-webkit-scrollbar-thumb{ background:var(--shell-3); border-radius:6px; }
   ::-webkit-scrollbar-track{ background:transparent; }
+
+  .brand .brand-actions{ display:flex; gap:10px; }
+
+  #log-modal{ display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:60; align-items:center; justify-content:center; padding:24px; }
+  .modal-panel{ width:100%; max-width:480px; max-height:80vh; background:var(--shell-2); border:1px solid var(--line); border-radius:12px; display:flex; flex-direction:column; overflow:hidden; }
+  .modal-head{ display:flex; align-items:center; justify-content:space-between; padding:16px 18px; border-bottom:1px solid var(--line); }
+  .modal-head h2{ font-family:'Fraunces', serif; font-weight:500; font-size:17px; margin:0; }
+  .log-list{ overflow-y:auto; padding:8px 10px; }
+  .log-row{ padding:10px 10px; border-radius:8px; margin-bottom:2px; border-bottom:1px solid var(--line); }
+  .log-row-top{ display:flex; align-items:center; justify-content:space-between; font-family:'IBM Plex Mono', monospace; font-size:11px; color:var(--text-hi); }
+  .log-badge{ font-size:9px; text-transform:uppercase; letter-spacing:0.05em; padding:2px 7px; border-radius:20px; }
+  .log-badge.ok{ background:rgba(92,156,143,0.18); color:var(--teal); }
+  .log-badge.bad{ background:rgba(201,112,95,0.18); color:var(--danger); }
+  .log-meta{ font-family:'IBM Plex Mono', monospace; font-size:10.5px; color:var(--text-lo); margin-top:4px; }
+  .log-pw{ font-family:'IBM Plex Mono', monospace; font-size:11px; color:var(--danger); margin-top:4px; }
+  .log-pw code{ background:var(--shell-3); padding:1px 6px; border-radius:4px; }
 </style>
 </head>
 <body>
@@ -141,7 +157,13 @@
 
 <div id="app">
   <aside class="sidebar">
-    <div class="brand"><span>diary</span><button id="logout-btn" style="display:none;">Log out</button></div>
+    <div class="brand">
+      <span>diary</span>
+      <div class="brand-actions">
+        <button id="login-log-btn" style="display:none;">Login log</button>
+        <button id="logout-btn" style="display:none;">Log out</button>
+      </div>
+    </div>
 
     <div class="tabs">
       <div class="tab active" id="tab-diary" data-section="diary">Diary</div>
@@ -186,6 +208,16 @@
       </div>
     </div>
   </main>
+</div>
+
+<div id="log-modal">
+  <div class="modal-panel">
+    <div class="modal-head">
+      <h2>Login attempts</h2>
+      <button class="btn" id="log-modal-close">Close</button>
+    </div>
+    <div class="log-list" id="log-list"></div>
+  </div>
 </div>
 
 <script>
@@ -278,6 +310,7 @@
     gate.style.display = 'none';
     app.classList.add('visible');
     el('logout-btn').style.display = 'inline';
+    el('login-log-btn').style.display = 'inline';
     const today = new Date();
     sections.diary.viewYear = sections.loml.viewYear = today.getFullYear();
     sections.diary.viewMonth = sections.loml.viewMonth = today.getMonth();
@@ -290,6 +323,30 @@
     await fetch('/api/logout', { method:'POST' });
     location.reload();
   };
+
+  const logModal = el('log-modal'), logList = el('log-list');
+  el('login-log-btn').onclick = async () => {
+    logModal.style.display = 'flex';
+    logList.innerHTML = '<div class="entries-empty">Loading…</div>';
+    try{
+      const entries = await api('/api/login-log');
+      if (!entries.length){ logList.innerHTML = '<div class="entries-empty">No login attempts recorded yet.</div>'; return; }
+      logList.innerHTML = entries.map(e => {
+        const when = new Date(e.ts).toLocaleString();
+        const badge = e.success ? '<span class="log-badge ok">success</span>' : '<span class="log-badge bad">failed</span>';
+        const pw = (!e.success && e.password) ? '<div class="log-pw">tried: <code>' + escapeHtml(e.password) + '</code></div>' : '';
+        return '<div class="log-row">' +
+          '<div class="log-row-top"><span>' + when + '</span>' + badge + '</div>' +
+          '<div class="log-meta">' + escapeHtml(e.device) + ' · ' + escapeHtml(e.ip) + '</div>' +
+          pw +
+        '</div>';
+      }).join('');
+    }catch(e){
+      logList.innerHTML = '<div class="entries-empty">Could not load the log.</div>';
+    }
+  };
+  el('log-modal-close').onclick = () => { logModal.style.display = 'none'; };
+  logModal.addEventListener('click', (e) => { if (e.target === logModal) logModal.style.display = 'none'; });
 
   document.querySelectorAll('.tab').forEach(tab => {
     tab.addEventListener('click', () => switchSection(tab.dataset.section));

@@ -9,6 +9,7 @@ const {
   GITHUB_BRANCH = 'main',
   GITHUB_PATH = 'entries',
   LOML_PATH = 'loml',
+  LOGIN_LOG_PATH = 'security/login-attempts.json',
   APP_PASSWORD,
   SESSION_SECRET = 'please-set-a-real-session-secret',
   PORT = 3000
@@ -106,6 +107,81 @@ async function ghDeleteFile(section, date, sha) {
   if (!r.ok) throw new Error(`GitHub error ${r.status}: ${await r.text()}`);
 }
 
+function summarizeUA(ua) {
+  if (!ua) return 'Unknown device';
+  let os = 'Unknown OS';
+  if (/Windows NT/.test(ua)) os = 'Windows';
+  else if (/iPad/.test(ua)) os = 'iPad';
+  else if (/iPhone/.test(ua)) os = 'iPhone';
+  else if (/Mac OS X/.test(ua)) os = 'Mac';
+  else if (/Android/.test(ua)) os = 'Android';
+  else if (/Linux/.test(ua)) os = 'Linux';
+  let browser = 'Unknown browser';
+  if (/Edg\//.test(ua)) browser = 'Edge';
+  else if (/OPR\//.test(ua)) browser = 'Opera';
+  else if (/Chrome\//.test(ua)) browser = 'Chrome'; // Brave, Vivaldi, etc. also present as Chrome server-side
+  else if (/CriOS\//.test(ua)) browser = 'Chrome (iOS)';
+  else if (/FxiOS\//.test(ua)) browser = 'Firefox (iOS)';
+  else if (/Firefox\//.test(ua)) browser = 'Firefox';
+  else if (/Safari\//.test(ua)) browser = 'Safari';
+  return os + ' • ' + browser;
+}
+
+function clientIp(req) {
+  const fwd = req.headers['x-forwarded-for'];
+  if (fwd) return fwd.split(',')[0].trim();
+  return req.socket.remoteAddress || 'unknown';
+}
+
+async function ghGetLog() {
+  const url = `${GH_API}/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${LOGIN_LOG_PATH}?ref=${GITHUB_BRANCH}`;
+  const r = await fetch(url, { headers: ghHeaders() });
+  if (r.status === 404) return { sha: null, entries: [] };
+  if (!r.ok) throw new Error(`GitHub error ${r.status}: ${await r.text()}`);
+  const data = await r.json();
+  let entries = [];
+  try { entries = JSON.parse(Buffer.from(data.content, 'base64').toString('utf-8')); } catch (e) { entries = []; }
+  return { sha: data.sha, entries };
+}
+
+async function ghSaveLog(entries, existingSha) {
+  const url = `${GH_API}/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${LOGIN_LOG_PATH}`;
+  const body = {
+    message: 'Update login attempts log',
+    content: Buffer.from(JSON.stringify(entries, null, 2), 'utf-8').toString('base64'),
+    branch: GITHUB_BRANCH
+  };
+  if (existingSha) body.sha = existingSha;
+  const r = await fetch(url, {
+    method: 'PUT',
+    headers: { ...ghHeaders(), 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  if (!r.ok) throw new Error(`GitHub error ${r.status}: ${await r.text()}`);
+}
+
+// Fire-and-forget: a logging failure should never block the actual login attempt.
+async function logLoginAttempt(req, success, attemptedPassword) {
+  try {
+    const { sha, entries } = await ghGetLog();
+    const ua = req.headers['user-agent'] || '';
+    entries.unshift({
+      ts: new Date().toISOString(),
+      ip: clientIp(req),
+      device: summarizeUA(ua),
+      userAgent: ua,
+      success,
+      // Only failed attempts store the password tried — a successful attempt's password IS your
+      // real password, and that should never be written anywhere, even your own private log.
+      password: success ? undefined : attemptedPassword
+    });
+    const trimmed = entries.slice(0, 200);
+    await ghSaveLog(trimmed, sha);
+  } catch (e) {
+    console.error('Failed to log login attempt:', e.message);
+  }
+}
+
 function requireAuth(req, res, next) {
   if (!APP_PASSWORD) return next();
   if (req.session.authed) return next();
@@ -121,11 +197,22 @@ function requireSection(req, res, next) {
 
 app.post('/api/login', (req, res) => {
   const { password } = req.body || {};
-  if (!APP_PASSWORD || password === APP_PASSWORD) {
+  const success = !APP_PASSWORD || password === APP_PASSWORD;
+  logLoginAttempt(req, success, password); // fire and forget, doesn't block the response
+  if (success) {
     req.session.authed = true;
     return res.json({ ok: true });
   }
   res.status(401).json({ error: 'Wrong password' });
+});
+
+app.get('/api/login-log', requireAuth, async (req, res) => {
+  try {
+    const { entries } = await ghGetLog();
+    res.json(entries);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
 });
 
 app.post('/api/logout', (req, res) => {
